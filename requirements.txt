@@ -1,6 +1,5 @@
-flask
-google-generativeai
-python-dotenv
-fastapi
-uvicorn
-requests
+Flask==2.3.2
+Flask-Cors==3.0.10
+requests==2.31.0
+gunicorn==20.1.0
+python-dotenv==1.0.0
