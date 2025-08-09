@@ -3,7 +3,24 @@ from flask_cors import CORS
 import requests
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+
+# Configure CORS - choose one of these options:
+
+# OPTION 1: Allow all origins (for development)
+# CORS(app)
+
+# OPTION 2: Allow specific origins (recommended for production)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "http://127.0.0.1:5500",  # Your local development
+            "https://your-frontend-domain.com",  # Your production frontend
+            "https://*.railway.app"  # Allow all Railway domains
+        ],
+        "methods": ["GET", "POST"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Deezer API Base URL
 DEEZER_API_URL = "https://api.deezer.com"
@@ -20,6 +37,8 @@ def search_songs():
         # Forward request to Deezer API
         response = requests.get(f"{DEEZER_API_URL}/search?q={query}&limit={limit}")
         response.raise_for_status()
+        
+        # Return the response with CORS headers
         return jsonify(response.json())
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
@@ -45,6 +64,14 @@ def get_track_details(track_id):
         return jsonify(response.json())
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+@app.after_request
+def after_request(response):
+    # Add additional headers if needed
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
