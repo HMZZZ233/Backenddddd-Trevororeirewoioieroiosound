@@ -1,77 +1,29 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
 import requests
 
-app = Flask(__name__)
+GENIUS_API_TOKEN = 'Xdvmlh4Du_NUYKundutVXAaeS2sre59XYY-qcyFg6pBF96NafK6riyVxyRYLg5U9P9E2zCN0eQNa7XeWVVjvKA'
 
-# Configure CORS - choose one of these options:
+def search_song_lyrics(query):
+    url = "https://api.genius.com/search"
+    headers = {'Authorization': f'Bearer {GENIUS_API_TOKEN}'}
+    params = {'q': query}
 
-# OPTION 1: Allow all origins (for development)
-# CORS(app)
+    response = requests.get(url, headers=headers, params=params)
+    if response.status_code != 200:
+        return None
 
-# OPTION 2: Allow specific origins (recommended for production)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "http://127.0.0.1:5500",  # Your local development
-            "https://your-frontend-domain.com",  # Your production frontend
-            "https://*.railway.app"  # Allow all Railway domains
-        ],
-        "methods": ["GET", "POST"],
-        "allow_headers": ["Content-Type"]
+    data = response.json()
+    hits = data['response']['hits']
+    if not hits:
+        return None
+
+    # Ambil lagu pertama dari hasil search
+    song_info = hits[0]['result']
+    song_title = song_info['title']
+    artist = song_info['primary_artist']['name']
+    url = song_info['url']  # Link Genius halaman lirik
+
+    return {
+        'title': song_title,
+        'artist': artist,
+        'url': url
     }
-})
-
-# Deezer API Base URL
-DEEZER_API_URL = "https://api.deezer.com"
-
-@app.route('/api/search', methods=['GET'])
-def search_songs():
-    query = request.args.get('q')
-    limit = request.args.get('limit', default=10, type=int)
-    
-    if not query:
-        return jsonify({"error": "Query parameter 'q' is required"}), 400
-    
-    try:
-        # Forward request to Deezer API
-        response = requests.get(f"{DEEZER_API_URL}/search?q={query}&limit={limit}")
-        response.raise_for_status()
-        
-        # Return the response with CORS headers
-        return jsonify(response.json())
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/chart', methods=['GET'])
-def get_chart():
-    limit = request.args.get('limit', default=10, type=int)
-    
-    try:
-        # Get popular tracks from Deezer
-        response = requests.get(f"{DEEZER_API_URL}/chart/0/tracks?limit={limit}")
-        response.raise_for_status()
-        return jsonify(response.json())
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/track/<int:track_id>', methods=['GET'])
-def get_track_details(track_id):
-    try:
-        # Get track details from Deezer
-        response = requests.get(f"{DEEZER_API_URL}/track/{track_id}")
-        response.raise_for_status()
-        return jsonify(response.json())
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.after_request
-def after_request(response):
-    # Add additional headers if needed
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
